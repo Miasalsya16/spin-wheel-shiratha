@@ -24,6 +24,16 @@ const STORAGE_KEY = 'spin-wheel-prizes-v2'
 const COLORS_VERSION_KEY = 'spin-wheel-colors-v4'
 const NAMES_VERSION_KEY = 'spin-wheel-names-v4'
 const ZONK_MERGE_KEY = 'spin-wheel-zonk-merge-v1'
+const AQOBAH_STOCK_FIX_KEY = 'spin-wheel-aqobah-stock-32-v1'
+
+/** Perbaiki stok Topi Aqobah yang tersimpan 31 (seed/local lama) → 32. */
+function fixAqobahStock(list) {
+  return list.map((p) => {
+    if (normalizePrizeName(p.name).toLowerCase() !== 'topi aqobah') return p
+    if (Number(p.stock) !== 31) return p
+    return { ...p, stock: 32, updatedAt: Date.now() }
+  })
+}
 
 function applyBrandColors(list) {
   return list.map((p) => {
@@ -44,6 +54,7 @@ function loadLocal() {
         const colorsApplied = localStorage.getItem(COLORS_VERSION_KEY) === '1'
         const namesApplied = localStorage.getItem(NAMES_VERSION_KEY) === '1'
         const zonkMerged = localStorage.getItem(ZONK_MERGE_KEY) === '1'
+        const aqobahFixed = localStorage.getItem(AQOBAH_STOCK_FIX_KEY) === '1'
 
         if (!colorsApplied || !namesApplied) {
           list = applyBrandColors(list)
@@ -58,6 +69,11 @@ function loadLocal() {
           // bersihkan flag spread lama
           localStorage.removeItem('spin-wheel-zonk-spread-v1')
           localStorage.removeItem('spin-wheel-zonk-spread-v2')
+        }
+
+        if (!aqobahFixed) {
+          list = fixAqobahStock(list)
+          localStorage.setItem(AQOBAH_STOCK_FIX_KEY, '1')
         }
 
         saveLocal(list)
@@ -77,6 +93,7 @@ function loadLocal() {
   localStorage.setItem(COLORS_VERSION_KEY, '1')
   localStorage.setItem(NAMES_VERSION_KEY, '1')
   localStorage.setItem(ZONK_MERGE_KEY, '1')
+  localStorage.setItem(AQOBAH_STOCK_FIX_KEY, '1')
   return seeded
 }
 
