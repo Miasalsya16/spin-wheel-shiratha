@@ -11,16 +11,32 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
-import { DEFAULT_PRIZES, createLocalId } from '../data/defaultPrizes'
+import { DEFAULT_PRIZES, PRIZE_COLORS_BY_NAME, createLocalId } from '../data/defaultPrizes'
 
 const STORAGE_KEY = 'spin-wheel-prizes-v2'
+const COLORS_VERSION_KEY = 'spin-wheel-colors-v3'
+
+function applyBrandColors(list) {
+  return list.map((p) => {
+    const mapped = PRIZE_COLORS_BY_NAME[String(p.name || '').toLowerCase()]
+    return mapped ? { ...p, color: mapped } : p
+  })
+}
 
 function loadLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (raw) {
       const parsed = JSON.parse(raw)
-      if (Array.isArray(parsed) && parsed.length) return parsed
+      if (Array.isArray(parsed) && parsed.length) {
+        const colorsApplied = localStorage.getItem(COLORS_VERSION_KEY) === '1'
+        const list = colorsApplied ? parsed : applyBrandColors(parsed)
+        if (!colorsApplied) {
+          saveLocal(list)
+          localStorage.setItem(COLORS_VERSION_KEY, '1')
+        }
+        return list
+      }
     }
   } catch {
     /* ignore */
@@ -31,8 +47,8 @@ function loadLocal() {
     order: i,
     updatedAt: Date.now(),
   }))
-  // Simpan segera supaya reload tidak regenerasi ulang / reset stok
   saveLocal(seeded)
+  localStorage.setItem(COLORS_VERSION_KEY, '1')
   return seeded
 }
 
@@ -74,15 +90,21 @@ function startPrizes() {
 export function usePrizes() {
   startPrizes()
 
-  const spinablePrizes = computed(() =>
+  const wheelPrizes = computed(() =>
+    // Tampil di roda selama masih ada stok (termasuk sisa 1)
     prizes.value.filter((p) => p.active !== false && p.stock > 0),
+  )
+
+  const winnablePrizes = computed(() =>
+    // Bisa diundi hanya jika stok > 1 (sisa 1 tidak boleh terpilih)
+    prizes.value.filter((p) => p.active !== false && p.stock > 1),
   )
 
   async function addPrize({ name, stock, color }) {
     const payload = {
       name: String(name || '').trim(),
       stock: Math.max(0, Number(stock) || 0),
-      color: color || '#E85D4C',
+      color: color || '#A68D5F',
       active: true,
       order: prizes.value.length,
       updatedAt: Date.now(),
@@ -135,7 +157,8 @@ export function usePrizes() {
 
   return {
     prizes,
-    spinablePrizes,
+    wheelPrizes,
+    winnablePrizes,
     loading,
     error,
     isLocalMode: !isFirebaseConfigured,

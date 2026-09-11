@@ -13,7 +13,23 @@ const form = reactive({
   color: '#A68D5F',
 })
 
-const colors = ['#A68D5F', '#2D4F4F', '#C45C4A', '#3D5A80', '#BC6C25', '#6D6875', '#457B9D', '#2A9D8F']
+const colors = [
+  '#C9A227',
+  '#2F5D50',
+  '#D4764E',
+  '#1E3A5F',
+  '#A68D5F',
+  '#8B5E3C',
+  '#4A7C6F',
+  '#B85C38',
+  '#6B8F71',
+  '#3F4E63',
+  '#C4A574',
+  '#9C6B4F',
+  '#5F7161',
+  '#A67C52',
+  '#6E6A63',
+]
 
 function submit() {
   if (!form.name.trim()) return
@@ -32,6 +48,21 @@ function onColor(prize, e) {
 
 function onActive(prize, e) {
   emit('update', prize.id, { active: e.target.checked })
+}
+
+function onStock(prize, e) {
+  const raw = e.target.value
+  if (raw === '') return
+  const next = Math.max(0, Math.min(9999, Math.floor(Number(raw)) || 0))
+  e.target.value = String(next)
+  if (next === prize.stock) return
+  emit('update', prize.id, { stock: next })
+}
+
+function onStockBlur(prize, e) {
+  if (e.target.value === '') {
+    e.target.value = String(prize.stock ?? 0)
+  }
 }
 </script>
 
@@ -82,7 +113,16 @@ function onActive(prize, e) {
         />
         <div class="stock-ctrl">
           <button type="button" @click="emit('adjust', prize.id, -1)" aria-label="Kurangi stok">−</button>
-          <span class="stock">{{ prize.stock }}</span>
+          <input
+            class="stock"
+            type="number"
+            min="0"
+            max="9999"
+            :value="prize.stock"
+            aria-label="Stok"
+            @change="onStock(prize, $event)"
+            @blur="onStockBlur(prize, $event)"
+          />
           <button type="button" @click="emit('adjust', prize.id, 1)" aria-label="Tambah stok">+</button>
         </div>
         <label class="active-toggle">
@@ -213,11 +253,24 @@ function onActive(prize, e) {
 }
 
 .stock {
-  min-width: 1.75rem;
+  width: 3.4rem;
+  min-width: 3.4rem;
   text-align: center;
   font-weight: 700;
   color: var(--shiratha-ink);
   font-variant-numeric: tabular-nums;
+  border: 1px solid var(--shiratha-line);
+  border-radius: 10px;
+  padding: 0.3rem 0.25rem;
+  background: #fff;
+  font: inherit;
+  -moz-appearance: textfield;
+}
+
+.stock::-webkit-outer-spin-button,
+.stock::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
 .active-toggle {

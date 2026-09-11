@@ -14,12 +14,14 @@ export function useSpin({ prizes, updatePrize }) {
   const spinError = ref(null)
 
   function pickWeighted(list) {
-    const total = list.reduce((sum, p) => sum + Math.max(0, p.stock), 0)
+    // Bobot = stok yang boleh diberikan (sisakan 1 cadangan)
+    const weights = list.map((p) => Math.max(0, p.stock - 1))
+    const total = weights.reduce((sum, w) => sum + w, 0)
     if (total <= 0) return null
     let r = Math.random() * total
-    for (const p of list) {
-      r -= Math.max(0, p.stock)
-      if (r <= 0) return p
+    for (let i = 0; i < list.length; i++) {
+      r -= weights[i]
+      if (r <= 0) return list[i]
     }
     return list[list.length - 1]
   }
@@ -27,8 +29,9 @@ export function useSpin({ prizes, updatePrize }) {
   async function commitWin(prize) {
     if (!isFirebaseConfigured || !db) {
       const current = prizes.value.find((p) => p.id === prize.id)
-      if (!current || current.stock < 1) {
-        throw new Error('Stok habis, silakan spin lagi')
+      // Jangan pernah kurangi di bawah 1
+      if (!current || current.stock <= 1) {
+        throw new Error('Stok cadangan habis, silakan spin lagi')
       }
       await updatePrize(prize.id, { stock: current.stock - 1 })
       return { ...current, stock: current.stock - 1 }
@@ -39,8 +42,8 @@ export function useSpin({ prizes, updatePrize }) {
       const snap = await tx.get(prizeRef)
       if (!snap.exists()) throw new Error('Hadiah tidak ditemukan')
       const data = snap.data()
-      if (!data.active || (data.stock || 0) < 1) {
-        throw new Error('Stok habis, silakan spin lagi')
+      if (!data.active || (data.stock || 0) <= 1) {
+        throw new Error('Stok cadangan habis, silakan spin lagi')
       }
       tx.update(prizeRef, {
         stock: data.stock - 1,
@@ -100,6 +103,8 @@ export function useSpin({ prizes, updatePrize }) {
 
   function clearWinner() {
     lastWinner.value = null
+    spinning.value = false
+    spinError.value = null
   }
 
   return {

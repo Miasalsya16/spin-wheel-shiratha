@@ -12,7 +12,8 @@ const { isAuthenticated, loginError, login, logout } = useAuth()
 
 const {
   prizes,
-  spinablePrizes,
+  wheelPrizes,
+  winnablePrizes,
   loading,
   error,
   isLocalMode,
@@ -30,7 +31,12 @@ const animating = ref(false)
 const presentation = ref(false)
 
 const canSpin = computed(
-  () => !loading.value && !animating.value && spinablePrizes.value.length > 0,
+  () =>
+    !loading.value &&
+    !animating.value &&
+    !spinning.value &&
+    !lastWinner.value &&
+    winnablePrizes.value.length > 0,
 )
 
 function onLogin({ username, password }) {
@@ -38,7 +44,8 @@ function onLogin({ username, password }) {
 }
 
 function targetRotationFor(prize) {
-  const list = spinablePrizes.value
+  // Index harus dari tampilan roda (termasuk item stok 1)
+  const list = wheelPrizes.value
   const index = list.findIndex((p) => p.id === prize.id)
   const n = list.length
   const slice = 360 / n
@@ -53,15 +60,21 @@ function targetRotationFor(prize) {
 
 async function onSpin() {
   if (!canSpin.value) return
-  const target = await spin(spinablePrizes.value)
+  const target = await spin(winnablePrizes.value)
   if (!target) return
 
   animating.value = true
-  rotation.value = targetRotationFor(target)
+  try {
+    rotation.value = targetRotationFor(target)
+    await new Promise((r) => setTimeout(r, 5000))
+    await finishSpin(target)
+  } finally {
+    animating.value = false
+  }
+}
 
-  await new Promise((r) => setTimeout(r, 4300))
-  await finishSpin(target)
-  animating.value = false
+function onCloseResult() {
+  clearWinner()
 }
 
 async function enterPresentation() {
@@ -141,7 +154,7 @@ onUnmounted(() => {
     <main class="layout" :class="{ 'layout-present': presentation }">
       <section class="stage">
         <SpinWheel
-          :prizes="spinablePrizes"
+          :prizes="wheelPrizes"
           :rotation="rotation"
           :spinning="animating"
           :large="presentation"
@@ -177,8 +190,8 @@ onUnmounted(() => {
 
         <p v-if="presentation" class="present-hint">Panel stok disembunyikan · tekan Esc untuk keluar</p>
 
-        <p v-if="!spinablePrizes.length && !loading" class="hint">
-          Semua stok habis atau belum ada hadiah aktif. Tambah/isi stok di editor.
+        <p v-if="!winnablePrizes.length && !loading" class="hint">
+          Semua hadiah sudah di stok cadangan (sisa 1) — masih tampil di roda, tapi tidak bisa terpilih. Tambah stok untuk lanjut spin.
         </p>
         <p v-if="spinError" class="err">{{ spinError }}</p>
         <p v-if="error" class="err">{{ error }}</p>
@@ -194,7 +207,7 @@ onUnmounted(() => {
       />
     </main>
 
-    <PrizeResult :winner="lastWinner" @close="clearWinner" />
+    <PrizeResult :winner="lastWinner" @close="onCloseResult" />
   </div>
 </template>
 

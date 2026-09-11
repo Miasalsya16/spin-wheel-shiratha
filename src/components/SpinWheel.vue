@@ -54,7 +54,7 @@ const segments = computed(() => {
 const wheelStyle = computed(() => ({
   transform: `rotate(${props.rotation}deg)`,
   transition: props.spinning
-    ? 'transform 4.2s cubic-bezier(0.12, 0.75, 0.08, 1)'
+    ? 'transform 5s cubic-bezier(0.12, 0.75, 0.08, 1)'
     : 'none',
 }))
 </script>
