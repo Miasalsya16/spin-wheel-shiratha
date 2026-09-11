@@ -192,8 +192,6 @@ onUnmounted(() => {
           </button>
         </div>
 
-        <p v-if="presentation" class="present-hint">Panel stok disembunyikan · tekan Esc untuk keluar</p>
-
         <p v-if="!winnablePrizes.length && !loading" class="hint">
           Semua hadiah sudah di stok cadangan (sisa 1) — masih tampil di roda, tapi tidak bisa terpilih. Tambah stok untuk lanjut spin.
         </p>
@@ -226,10 +224,15 @@ onUnmounted(() => {
 }
 
 .page.presentation {
+  height: 100svh;
   min-height: 100svh;
+  max-height: 100svh;
+  width: 100%;
   display: flex;
   flex-direction: column;
+  align-items: center;
   justify-content: center;
+  overflow: hidden;
 }
 
 .atmosphere {
@@ -246,7 +249,9 @@ onUnmounted(() => {
 }
 
 .hero-present {
-  padding: 0.85rem 1rem 0;
+  flex-shrink: 0;
+  width: 100%;
+  padding: 1rem 1.25rem 0.35rem;
 }
 
 .brand-logo {
@@ -257,7 +262,7 @@ onUnmounted(() => {
 }
 
 .hero-present .brand-logo {
-  width: min(200px, 52vw);
+  width: min(200px, 36vmin);
 }
 
 .hero h1 {
@@ -270,7 +275,7 @@ onUnmounted(() => {
 }
 
 .hero-present h1 {
-  margin: 0.4rem 0 0;
+  margin: 0.35rem 0 0;
   font-size: 0.72rem;
 }
 
@@ -332,9 +337,14 @@ onUnmounted(() => {
 }
 
 .layout-present {
-  max-width: none;
-  padding: 0.5rem 1rem 1.5rem;
+  width: 100%;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0.5rem 1.5rem 1.5rem;
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   justify-content: center;
   align-items: center;
 }
@@ -352,7 +362,31 @@ onUnmounted(() => {
   border: none;
   box-shadow: none;
   background: transparent;
-  padding: 0.5rem;
+  padding: 0;
+  width: auto;
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 auto;
+}
+
+.layout-present .actions {
+  flex-shrink: 0;
+  margin-top: 1.25rem;
+  gap: 0.75rem;
+}
+
+.layout-present .spin-btn {
+  min-width: 160px;
+  padding: 0.95rem 2rem;
+  font-size: 1.05rem;
+}
+
+.layout-present .present-btn {
+  padding: 0.95rem 1.35rem;
+  font-size: 0.9rem;
 }
 
 .actions {
@@ -408,12 +442,6 @@ onUnmounted(() => {
   border-color: rgba(166, 141, 95, 0.45);
 }
 
-.present-hint {
-  margin: 0.75rem 0 0;
-  font-size: 0.8rem;
-  color: var(--shiratha-muted);
-}
-
 .hint,
 .err {
   margin: 0.75rem 0 0;
@@ -430,7 +458,78 @@ onUnmounted(() => {
 
 @media (max-width: 860px) {
   .layout {
-    padding-inline: 1rem;
+    padding: 1rem 0.85rem 2.5rem;
+    gap: 1.25rem;
+  }
+
+  .hero {
+    padding: 1.25rem 1rem 0.25rem;
+  }
+
+  .brand-logo {
+    width: min(200px, 58vw);
+  }
+
+  .tagline {
+    font-size: 0.88rem;
+    padding-inline: 0.25rem;
+  }
+
+  .stage {
+    padding: 1rem 0.75rem 1.25rem;
+    border-radius: 20px;
+  }
+
+  .page:not(.presentation) .actions {
+    flex-direction: column;
+    align-items: stretch;
+    margin-top: 1rem;
+  }
+
+  .page:not(.presentation) .spin-btn,
+  .page:not(.presentation) .present-btn {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .layout-present {
+    padding: 0.35rem 1rem 1rem;
+    max-width: 100%;
+  }
+
+  .layout-present .actions {
+    flex-direction: row;
+    flex-wrap: wrap;
+    width: 100%;
+    max-width: 420px;
+    justify-content: center;
+  }
+
+  .layout-present .spin-btn,
+  .layout-present .present-btn {
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .layout {
+    padding: 0.75rem 0.65rem 2rem;
+  }
+
+  .hero h1 {
+    letter-spacing: 0.2em;
+  }
+
+  .mode-badge {
+    font-size: 0.7rem;
+    padding: 0.3rem 0.7rem;
+  }
+
+  .hint,
+  .err {
+    font-size: 0.85rem;
   }
 }
 </style>

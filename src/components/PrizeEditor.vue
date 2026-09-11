@@ -125,23 +125,6 @@ function onStockBlur(prize, e) {
     e.target.value = String(prize.stock ?? 0)
   }
 }
-
-async function onRowLogo(prize, e) {
-  const file = e.target.files?.[0]
-  if (!file) return
-  try {
-    const logo = await readLogoFile(file)
-    emit('update', prize.id, { logo })
-  } catch (err) {
-    alert(err.message || 'Gagal upload logo')
-  } finally {
-    e.target.value = ''
-  }
-}
-
-function clearRowLogo(prize) {
-  emit('update', prize.id, { logo: '' })
-}
 </script>
 
 <template>
@@ -149,7 +132,7 @@ function clearRowLogo(prize) {
     <div class="editor-head">
       <h2 id="editor-title">Kelola Hadiah</h2>
       <p>
-        Tambah hadiah, atur stok & warna. Logo opsional — muncul di popup saat menang
+        Tambah hadiah, atur stok & warna. Logo opsional saat menambah — muncul di popup saat menang
         (partner bawaan tetap otomatis dari nama).
       </p>
     </div>
@@ -197,57 +180,48 @@ function clearRowLogo(prize) {
 
     <ul class="prize-list">
       <li v-for="prize in prizes" :key="prize.id" class="prize-row">
-        <span class="dot" :style="{ background: prize.color }" />
-        <input
-          class="name-input"
-          :value="prize.name"
-          @change="onName(prize, $event)"
-        />
-        <input
-          class="color-input"
-          type="color"
-          :value="prize.color"
-          @input="onColor(prize, $event)"
-        />
-        <div class="stock-ctrl">
-          <button type="button" @click="emit('adjust', prize.id, -1)" aria-label="Kurangi stok">−</button>
+        <div class="row-top">
+          <span class="dot" :style="{ background: prize.color }" />
           <input
-            class="stock"
-            type="number"
-            min="0"
-            max="9999"
-            :value="prize.stock"
-            aria-label="Stok"
-            @change="onStock(prize, $event)"
-            @blur="onStockBlur(prize, $event)"
+            class="name-input"
+            :value="prize.name"
+            @change="onName(prize, $event)"
           />
-          <button type="button" @click="emit('adjust', prize.id, 1)" aria-label="Tambah stok">+</button>
+          <input
+            class="color-input"
+            type="color"
+            :value="prize.color"
+            @input="onColor(prize, $event)"
+          />
         </div>
-        <div class="logo-cell">
-          <label class="logo-btn logo-btn-sm">
-            <input type="file" accept="image/*" hidden @change="onRowLogo(prize, $event)" />
-            <img v-if="prize.logo" :src="prize.logo" alt="" class="logo-thumb" />
-            <span v-else>Logo</span>
+
+        <div class="row-bottom">
+          <div class="stock-ctrl">
+            <button type="button" @click="emit('adjust', prize.id, -1)" aria-label="Kurangi stok">−</button>
+            <input
+              class="stock"
+              type="number"
+              min="0"
+              max="9999"
+              :value="prize.stock"
+              aria-label="Stok"
+              @change="onStock(prize, $event)"
+              @blur="onStockBlur(prize, $event)"
+            />
+            <button type="button" @click="emit('adjust', prize.id, 1)" aria-label="Tambah stok">+</button>
+          </div>
+
+          <label class="active-toggle">
+            <input
+              type="checkbox"
+              :checked="prize.active !== false"
+              @change="onActive(prize, $event)"
+            />
+            Aktif
           </label>
-          <button
-            v-if="prize.logo"
-            type="button"
-            class="logo-clear-sm"
-            aria-label="Hapus logo"
-            @click="clearRowLogo(prize)"
-          >
-            ×
-          </button>
+
+          <button type="button" class="btn-danger" @click="emit('remove', prize.id)">Hapus</button>
         </div>
-        <label class="active-toggle">
-          <input
-            type="checkbox"
-            :checked="prize.active !== false"
-            @change="onActive(prize, $event)"
-          />
-          Aktif
-        </label>
-        <button type="button" class="btn-danger" @click="emit('remove', prize.id)">Hapus</button>
       </li>
     </ul>
 
@@ -344,13 +318,6 @@ function clearRowLogo(prize) {
   cursor: pointer;
 }
 
-.logo-thumb {
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
-  display: block;
-}
-
 .logo-preview-wrap {
   display: inline-flex;
   align-items: center;
@@ -404,59 +371,44 @@ function clearRowLogo(prize) {
 }
 
 .prize-row {
-  display: grid;
-  grid-template-columns: 14px minmax(0, 1fr) 40px auto 72px 64px 72px;
-  gap: 0.45rem;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  padding: 0.55rem 0.45rem;
+  gap: 0.55rem 0.65rem;
+  padding: 0.65rem 0.6rem;
   border-radius: 16px;
   background: var(--shiratha-bg-soft);
 }
 
-.logo-cell {
-  position: relative;
-  width: 72px;
-  height: 36px;
-  display: flex;
+.row-top {
+  display: grid;
+  grid-template-columns: 14px minmax(0, 1fr) 40px;
+  gap: 0.45rem;
   align-items: center;
-  justify-content: center;
-}
-
-.logo-btn-sm {
-  width: 100%;
+  flex: 1 1 220px;
   min-width: 0;
-  min-height: 36px;
-  padding: 0.25rem 0.4rem;
-  border-radius: 12px;
 }
 
-.logo-clear-sm {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 20px;
-  height: 20px;
-  border-radius: 999px;
-  border: 1px solid var(--shiratha-line);
-  background: #fff;
-  color: var(--shiratha-muted);
-  font-size: 0.85rem;
-  line-height: 1;
-  cursor: pointer;
-  padding: 0;
-  z-index: 1;
+.row-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1 1 220px;
 }
 
 .dot {
   width: 12px;
   height: 12px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .stock-ctrl {
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
+  flex-shrink: 0;
 }
 
 .stock-ctrl button {
@@ -469,6 +421,7 @@ function clearRowLogo(prize) {
   font-size: 1rem;
   line-height: 1;
   cursor: pointer;
+  flex-shrink: 0;
 }
 
 .stock {
@@ -522,6 +475,7 @@ function clearRowLogo(prize) {
   border: 1px solid rgba(196, 92, 74, 0.35);
   padding: 0.4rem 0.7rem;
   font-size: 0.8rem;
+  margin-left: auto;
 }
 
 .empty {
@@ -565,12 +519,31 @@ function clearRowLogo(prize) {
 }
 
 @media (max-width: 720px) {
+  .editor {
+    padding: 1.1rem 0.95rem 1.25rem;
+    border-radius: 20px;
+  }
+
   .stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.45rem;
+  }
+
+  .stat {
+    padding: 0.7rem 0.4rem;
+  }
+
+  .stat-label {
+    font-size: 0.62rem;
+    letter-spacing: 0.02em;
+  }
+
+  .stat-value {
+    font-size: 1.2rem;
   }
 
   .add-form {
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: 1fr 72px 48px;
   }
 
   .add-form button {
@@ -578,8 +551,70 @@ function clearRowLogo(prize) {
   }
 
   .prize-row {
-    grid-template-columns: 14px 1fr 36px;
-    grid-template-rows: auto auto auto;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.65rem;
+    padding: 0.85rem 0.7rem;
+  }
+
+  .row-top {
+    flex: none;
+    width: 100%;
+  }
+
+  .row-bottom {
+    flex: none;
+    width: 100%;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-danger {
+    margin-left: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .row-bottom {
+    flex-wrap: wrap;
+  }
+
+  .stock-ctrl {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .stock-ctrl button {
+    width: 40px;
+    height: 40px;
+  }
+
+  .stock {
+    flex: 1;
+    width: auto;
+    max-width: none;
+    min-width: 4rem;
+    height: 40px;
+  }
+
+  .active-toggle {
+    margin-right: auto;
+  }
+
+  .btn-danger {
+    margin-left: 0;
+    flex: 1;
+    padding: 0.55rem 0.7rem;
+  }
+
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
+  .stat-value {
+    font-size: 1.35rem;
   }
 }
 </style>

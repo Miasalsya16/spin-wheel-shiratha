@@ -548,4 +548,43 @@ const confetti = computed(() => {
     transform: translate3d(var(--drift), 110vh, 0) rotate(var(--rot));
   }
 }
+
+@media (max-width: 480px) {
+  .overlay {
+    padding: 0.85rem;
+    align-items: end;
+    place-items: unset;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+  }
+
+  .card {
+    width: 100%;
+    padding: 1.75rem 1.15rem 1.35rem;
+    border-radius: 22px 22px 18px 18px;
+    max-height: min(92svh, 640px);
+    overflow-y: auto;
+  }
+
+  .badge.badge-wide {
+    width: min(148px, 70vw);
+    height: 84px;
+  }
+
+  .badge.badge-tall {
+    width: min(112px, 42vw);
+    height: 124px;
+  }
+
+  .badge.badge-logo:not(.badge-wide):not(.badge-tall) {
+    width: 96px;
+    height: 96px;
+  }
+
+  .cta {
+    width: 100%;
+    min-width: 0;
+  }
+}
 </style>

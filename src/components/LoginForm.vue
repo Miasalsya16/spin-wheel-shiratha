@@ -165,4 +165,24 @@ input {
 .submit:hover {
   background: #957a4f;
 }
+
+@media (max-width: 480px) {
+  .card {
+    padding: 1.5rem 1.15rem 1.25rem;
+    border-radius: 20px;
+  }
+
+  .brand-logo {
+    width: min(180px, 62%);
+  }
+
+  .pass-row {
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .toggle {
+    padding: 0.65rem 0.8rem;
+  }
+}
 </style>

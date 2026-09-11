@@ -8,16 +8,16 @@ const props = defineProps({
   large: { type: Boolean, default: false },
 })
 
-const size = computed(() => (props.large ? 640 : 520))
+const size = computed(() => (props.large ? 760 : 520))
 const cx = computed(() => size.value / 2)
 const cy = computed(() => size.value / 2)
 const radius = computed(() => size.value / 2 - 10)
-const hubR = computed(() => (props.large ? 40 : 34))
-const hubDot = computed(() => (props.large ? 12 : 11))
+const hubR = computed(() => (props.large ? 44 : 34))
+const hubDot = computed(() => (props.large ? 14 : 11))
 
 const labelFont = computed(() => {
   const n = props.prizes.length || 1
-  const base = props.large ? 15 : 13
+  const base = props.large ? 17 : 13
   if (n >= 14) return base - 2
   if (n >= 10) return base - 1
   return base
@@ -146,39 +146,52 @@ const wheelStyle = computed(() => ({
 <style scoped>
 .wheel-wrap {
   position: relative;
-  width: min(520px, 92vw);
-  height: min(520px, 92vw);
+  /* % of parent — jangan pakai vw biar tidak overflow di container ber-padding */
+  width: min(520px, 100%);
+  aspect-ratio: 1;
+  height: auto;
   margin: 0 auto;
 }
 
 .wheel-wrap.large {
-  width: min(640px, 88vmin);
-  height: min(640px, 88vmin);
+  /* Besar tapi ada napas — tidak mepet logo/tombol */
+  width: min(680px, 68vmin, calc(100svh - 14rem));
+  max-width: calc(100vw - 3rem);
 }
 
 .pointer {
   position: absolute;
-  top: -8px;
+  top: -6px;
   left: 50%;
   z-index: 3;
   width: 0;
   height: 0;
   transform: translateX(-50%);
-  border-left: 16px solid transparent;
-  border-right: 16px solid transparent;
-  border-top: 32px solid #a68d5f;
+  border-left: 14px solid transparent;
+  border-right: 14px solid transparent;
+  border-top: 28px solid #a68d5f;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .large .pointer {
+  top: -8px;
   border-left-width: 18px;
   border-right-width: 18px;
   border-top-width: 36px;
 }
 
+@media (max-width: 480px) {
+  .pointer {
+    top: -4px;
+    border-left-width: 11px;
+    border-right-width: 11px;
+    border-top-width: 22px;
+  }
+}
+
 .wheel-shadow {
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  inset: 0;
   border-radius: 50%;
   box-shadow: 0 16px 40px rgba(43, 43, 43, 0.12);
 }
