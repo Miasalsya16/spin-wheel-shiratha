@@ -11,15 +11,26 @@ import {
   updateDoc,
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
-import { DEFAULT_PRIZES, PRIZE_COLORS_BY_NAME, createLocalId } from '../data/defaultPrizes'
+import {
+  DEFAULT_PRIZES,
+  PRIZE_COLORS_BY_NAME,
+  createLocalId,
+  normalizePrizeName,
+  isZonkName,
+  mergeZonkPrizes,
+} from '../data/defaultPrizes'
 
 const STORAGE_KEY = 'spin-wheel-prizes-v2'
-const COLORS_VERSION_KEY = 'spin-wheel-colors-v3'
+const COLORS_VERSION_KEY = 'spin-wheel-colors-v4'
+const NAMES_VERSION_KEY = 'spin-wheel-names-v4'
+const ZONK_MERGE_KEY = 'spin-wheel-zonk-merge-v1'
 
 function applyBrandColors(list) {
   return list.map((p) => {
-    const mapped = PRIZE_COLORS_BY_NAME[String(p.name || '').toLowerCase()]
-    return mapped ? { ...p, color: mapped } : p
+    const name = normalizePrizeName(p.name)
+    if (isZonkName(name)) return { ...p, name: 'ZONK', color: '#57534E' }
+    const mapped = PRIZE_COLORS_BY_NAME[name.toLowerCase()]
+    return mapped ? { ...p, name, color: mapped } : { ...p, name }
   })
 }
 
@@ -29,12 +40,27 @@ function loadLocal() {
     if (raw) {
       const parsed = JSON.parse(raw)
       if (Array.isArray(parsed) && parsed.length) {
+        let list = parsed
         const colorsApplied = localStorage.getItem(COLORS_VERSION_KEY) === '1'
-        const list = colorsApplied ? parsed : applyBrandColors(parsed)
-        if (!colorsApplied) {
-          saveLocal(list)
+        const namesApplied = localStorage.getItem(NAMES_VERSION_KEY) === '1'
+        const zonkMerged = localStorage.getItem(ZONK_MERGE_KEY) === '1'
+
+        if (!colorsApplied || !namesApplied) {
+          list = applyBrandColors(list)
           localStorage.setItem(COLORS_VERSION_KEY, '1')
+          localStorage.setItem(NAMES_VERSION_KEY, '1')
         }
+
+        const zonkCount = list.filter((p) => isZonkName(p.name)).length
+        if (!zonkMerged || zonkCount !== 1) {
+          list = mergeZonkPrizes(list)
+          localStorage.setItem(ZONK_MERGE_KEY, '1')
+          // bersihkan flag spread lama
+          localStorage.removeItem('spin-wheel-zonk-spread-v1')
+          localStorage.removeItem('spin-wheel-zonk-spread-v2')
+        }
+
+        saveLocal(list)
         return list
       }
     }
@@ -49,6 +75,8 @@ function loadLocal() {
   }))
   saveLocal(seeded)
   localStorage.setItem(COLORS_VERSION_KEY, '1')
+  localStorage.setItem(NAMES_VERSION_KEY, '1')
+  localStorage.setItem(ZONK_MERGE_KEY, '1')
   return seeded
 }
 
@@ -100,11 +128,12 @@ export function usePrizes() {
     prizes.value.filter((p) => p.active !== false && p.stock > 1),
   )
 
-  async function addPrize({ name, stock, color }) {
+  async function addPrize({ name, stock, color, logo }) {
     const payload = {
       name: String(name || '').trim(),
       stock: Math.max(0, Number(stock) || 0),
       color: color || '#A68D5F',
+      logo: logo || '',
       active: true,
       order: prizes.value.length,
       updatedAt: Date.now(),

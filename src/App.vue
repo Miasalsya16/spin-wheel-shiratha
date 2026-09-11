@@ -7,6 +7,7 @@ import LoginForm from './components/LoginForm.vue'
 import { usePrizes } from './composables/usePrizes'
 import { useSpin } from './composables/useSpin'
 import { useAuth } from './composables/useAuth'
+import { useSpinStats } from './composables/useSpinStats'
 
 const { isAuthenticated, loginError, login, logout } = useAuth()
 
@@ -23,8 +24,11 @@ const {
   removePrize,
 } = usePrizes()
 
+const { totalSpins, prizesUsed, prizesRemaining, recordSpin } =
+  useSpinStats(prizes)
+
 const { spinning, lastWinner, spinError, spin, finishSpin, clearWinner } =
-  useSpin({ prizes, updatePrize })
+  useSpin({ prizes, updatePrize, recordSpin })
 
 const rotation = ref(0)
 const animating = ref(false)
@@ -200,6 +204,9 @@ onUnmounted(() => {
       <PrizeEditor
         v-if="!presentation"
         :prizes="prizes"
+        :prizes-remaining="prizesRemaining"
+        :prizes-used="prizesUsed"
+        :total-spins="totalSpins"
         @add="addPrize"
         @update="updatePrize"
         @adjust="adjustStock"
@@ -315,27 +322,26 @@ onUnmounted(() => {
 }
 
 .layout {
-  display: grid;
-  grid-template-columns: minmax(280px, 420px) minmax(280px, 1fr);
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
   gap: 1.75rem;
-  align-items: start;
-  max-width: 1060px;
+  max-width: 920px;
   margin: 0 auto;
   padding: 1.25rem 1.25rem 3rem;
 }
 
 .layout-present {
-  display: flex;
-  justify-content: center;
   max-width: none;
   padding: 0.5rem 1rem 1.5rem;
   flex: 1;
+  justify-content: center;
   align-items: center;
 }
 
 .stage {
   text-align: center;
-  padding: 1rem 0.5rem;
+  padding: 1.35rem 1rem 1.5rem;
   background: #fff;
   border: 1px solid var(--shiratha-line);
   border-radius: 24px;
@@ -423,8 +429,8 @@ onUnmounted(() => {
 }
 
 @media (max-width: 860px) {
-  .layout:not(.layout-present) {
-    grid-template-columns: 1fr;
+  .layout {
+    padding-inline: 1rem;
   }
 }
 </style>

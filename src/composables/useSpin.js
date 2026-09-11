@@ -8,7 +8,7 @@ import {
 } from 'firebase/firestore'
 import { db, isFirebaseConfigured } from '../firebase'
 
-export function useSpin({ prizes, updatePrize }) {
+export function useSpin({ prizes, updatePrize, recordSpin }) {
   const spinning = ref(false)
   const lastWinner = ref(null)
   const spinError = ref(null)
@@ -34,7 +34,9 @@ export function useSpin({ prizes, updatePrize }) {
         throw new Error('Stok cadangan habis, silakan spin lagi')
       }
       await updatePrize(prize.id, { stock: current.stock - 1 })
-      return { ...current, stock: current.stock - 1 }
+      const won = { ...current, stock: current.stock - 1 }
+      recordSpin?.({ prizeId: prize.id, prizeName: prize.name })
+      return won
     }
 
     const prizeRef = doc(db, 'prizes', prize.id)

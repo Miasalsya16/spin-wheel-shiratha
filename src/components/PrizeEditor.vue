@@ -1,8 +1,11 @@
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 
 defineProps({
   prizes: { type: Array, required: true },
+  prizesRemaining: { type: Number, default: 0 },
+  prizesUsed: { type: Number, default: 0 },
+  totalSpins: { type: Number, default: 0 },
 })
 
 const emit = defineEmits(['add', 'update', 'adjust', 'remove'])
@@ -11,31 +14,89 @@ const form = reactive({
   name: '',
   stock: 5,
   color: '#A68D5F',
+  logo: '',
 })
 
+const logoInput = ref(null)
+
 const colors = [
-  '#C9A227',
-  '#2F5D50',
-  '#D4764E',
-  '#1E3A5F',
-  '#A68D5F',
-  '#8B5E3C',
-  '#4A7C6F',
-  '#B85C38',
-  '#6B8F71',
-  '#3F4E63',
-  '#C4A574',
-  '#9C6B4F',
-  '#5F7161',
-  '#A67C52',
-  '#6E6A63',
+  '#E6A817',
+  '#0D9488',
+  '#E11D48',
+  '#1D4ED8',
+  '#CA8A04',
+  '#9A3412',
+  '#059669',
+  '#C026D3',
+  '#0284C7',
+  '#312E81',
+  '#F97316',
+  '#BE123C',
+  '#4D7C0F',
+  '#7C3AED',
+  '#57534E',
 ]
 
-function submit() {
+function readLogoFile(file) {
+  return new Promise((resolve, reject) => {
+    if (!file || !file.type.startsWith('image/')) {
+      reject(new Error('File harus gambar'))
+      return
+    }
+    if (file.size > 1.5 * 1024 * 1024) {
+      reject(new Error('Ukuran logo max 1.5MB'))
+      return
+    }
+
+    const reader = new FileReader()
+    reader.onload = () => {
+      const img = new Image()
+      img.onload = () => {
+        const max = 480
+        const scale = Math.min(1, max / Math.max(img.width, img.height))
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.max(1, Math.round(img.width * scale))
+        canvas.height = Math.max(1, Math.round(img.height * scale))
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        resolve(canvas.toDataURL('image/png'))
+      }
+      img.onerror = () => reject(new Error('Gagal baca gambar'))
+      img.src = reader.result
+    }
+    reader.onerror = () => reject(new Error('Gagal baca file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+async function onFormLogo(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  try {
+    form.logo = await readLogoFile(file)
+  } catch (err) {
+    alert(err.message || 'Gagal upload logo')
+    e.target.value = ''
+  }
+}
+
+function clearFormLogo() {
+  form.logo = ''
+  if (logoInput.value) logoInput.value.value = ''
+}
+
+async function submit() {
   if (!form.name.trim()) return
-  emit('add', { name: form.name, stock: form.stock, color: form.color })
+  emit('add', {
+    name: form.name,
+    stock: form.stock,
+    color: form.color,
+    logo: form.logo,
+  })
   form.name = ''
   form.stock = 5
+  form.logo = ''
+  if (logoInput.value) logoInput.value.value = ''
 }
 
 function onName(prize, e) {
@@ -64,13 +125,33 @@ function onStockBlur(prize, e) {
     e.target.value = String(prize.stock ?? 0)
   }
 }
+
+async function onRowLogo(prize, e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  try {
+    const logo = await readLogoFile(file)
+    emit('update', prize.id, { logo })
+  } catch (err) {
+    alert(err.message || 'Gagal upload logo')
+  } finally {
+    e.target.value = ''
+  }
+}
+
+function clearRowLogo(prize) {
+  emit('update', prize.id, { logo: '' })
+}
 </script>
 
 <template>
   <section class="editor" aria-labelledby="editor-title">
     <div class="editor-head">
       <h2 id="editor-title">Kelola Hadiah</h2>
-      <p>Siapa saja yang login bisa menambah, mengubah stok, warna, atau menghapus opsi.</p>
+      <p>
+        Tambah hadiah, atur stok & warna. Logo opsional — muncul di popup saat menang
+        (partner bawaan tetap otomatis dari nama).
+      </p>
     </div>
 
     <form class="add-form" @submit.prevent="submit">
@@ -85,6 +166,23 @@ function onStockBlur(prize, e) {
       <input v-model="form.color" type="color" aria-label="Warna" />
       <button type="submit" class="btn-primary">Tambah</button>
     </form>
+
+    <div class="logo-add">
+      <label class="logo-btn">
+        <input
+          ref="logoInput"
+          type="file"
+          accept="image/*"
+          hidden
+          @change="onFormLogo"
+        />
+        {{ form.logo ? 'Ganti logo' : 'Upload logo (opsional)' }}
+      </label>
+      <div v-if="form.logo" class="logo-preview-wrap">
+        <img :src="form.logo" alt="Preview logo" class="logo-preview" />
+        <button type="button" class="logo-clear" @click="clearFormLogo">Hapus</button>
+      </div>
+    </div>
 
     <div class="swatches" aria-hidden="true">
       <button
@@ -125,6 +223,22 @@ function onStockBlur(prize, e) {
           />
           <button type="button" @click="emit('adjust', prize.id, 1)" aria-label="Tambah stok">+</button>
         </div>
+        <div class="logo-cell">
+          <label class="logo-btn logo-btn-sm">
+            <input type="file" accept="image/*" hidden @change="onRowLogo(prize, $event)" />
+            <img v-if="prize.logo" :src="prize.logo" alt="" class="logo-thumb" />
+            <span v-else>Logo</span>
+          </label>
+          <button
+            v-if="prize.logo"
+            type="button"
+            class="logo-clear-sm"
+            aria-label="Hapus logo"
+            @click="clearRowLogo(prize)"
+          >
+            ×
+          </button>
+        </div>
         <label class="active-toggle">
           <input
             type="checkbox"
@@ -138,6 +252,21 @@ function onStockBlur(prize, e) {
     </ul>
 
     <p v-if="!prizes.length" class="empty">Belum ada hadiah. Tambahkan di atas.</p>
+
+    <div class="stats">
+      <div class="stat">
+        <span class="stat-label">Sisa hadiah</span>
+        <strong class="stat-value">{{ prizesRemaining }}</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Hadiah terpakai</span>
+        <strong class="stat-value">{{ prizesUsed }}</strong>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Total spin</span>
+        <strong class="stat-value">{{ totalSpins }}</strong>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -192,6 +321,62 @@ function onStockBlur(prize, e) {
   cursor: pointer;
 }
 
+.logo-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.logo-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  border: 1px dashed rgba(166, 141, 95, 0.55);
+  border-radius: 999px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--shiratha-gold);
+  background: #fff;
+  cursor: pointer;
+}
+
+.logo-thumb {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  display: block;
+}
+
+.logo-preview-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+}
+
+.logo-preview {
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  border-radius: 10px;
+  border: 1px solid var(--shiratha-line);
+  background: #fff;
+}
+
+.logo-clear {
+  border: 1px solid var(--shiratha-line);
+  background: #fff;
+  color: var(--shiratha-muted);
+  cursor: pointer;
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
 .swatches {
   display: flex;
   flex-wrap: wrap;
@@ -220,12 +405,46 @@ function onStockBlur(prize, e) {
 
 .prize-row {
   display: grid;
-  grid-template-columns: 14px 1fr 40px auto auto auto;
+  grid-template-columns: 14px minmax(0, 1fr) 40px auto 72px 64px 72px;
   gap: 0.45rem;
   align-items: center;
   padding: 0.55rem 0.45rem;
   border-radius: 16px;
   background: var(--shiratha-bg-soft);
+}
+
+.logo-cell {
+  position: relative;
+  width: 72px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logo-btn-sm {
+  width: 100%;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0.25rem 0.4rem;
+  border-radius: 12px;
+}
+
+.logo-clear-sm {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  border: 1px solid var(--shiratha-line);
+  background: #fff;
+  color: var(--shiratha-muted);
+  font-size: 0.85rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1;
 }
 
 .dot {
@@ -311,7 +530,45 @@ function onStockBlur(prize, e) {
   font-size: 0.9rem;
 }
 
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.65rem;
+  margin-top: 1.15rem;
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--shiratha-line);
+}
+
+.stat {
+  background: var(--shiratha-bg-soft);
+  border-radius: 16px;
+  padding: 0.85rem 0.7rem;
+  text-align: center;
+}
+
+.stat-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--shiratha-muted);
+  margin-bottom: 0.3rem;
+}
+
+.stat-value {
+  display: block;
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--shiratha-ink);
+  font-variant-numeric: tabular-nums;
+}
+
 @media (max-width: 720px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+
   .add-form {
     grid-template-columns: 1fr 1fr;
   }
@@ -322,20 +579,7 @@ function onStockBlur(prize, e) {
 
   .prize-row {
     grid-template-columns: 14px 1fr 36px;
-    grid-template-rows: auto auto;
-  }
-
-  .stock-ctrl {
-    grid-column: 1 / 2;
-  }
-
-  .active-toggle {
-    grid-column: 2 / 3;
-  }
-
-  .btn-danger {
-    grid-column: 3 / 4;
-    justify-self: end;
+    grid-template-rows: auto auto auto;
   }
 }
 </style>

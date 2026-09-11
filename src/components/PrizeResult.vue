@@ -14,6 +14,68 @@ const isZonk = computed(() =>
     .includes('ZONK'),
 )
 
+const isMinala = computed(() =>
+  String(props.winner?.name || '')
+    .toLowerCase()
+    .includes('minala'),
+)
+
+const isAqobah = computed(() =>
+  String(props.winner?.name || '')
+    .toLowerCase()
+    .includes('aqobah'),
+)
+
+const isKanomas = computed(() =>
+  String(props.winner?.name || '')
+    .toLowerCase()
+    .includes('kanomas'),
+)
+
+const isJasindo = computed(() =>
+  String(props.winner?.name || '')
+    .toLowerCase()
+    .includes('jasindo'),
+)
+
+const isTreetan = computed(() =>
+  String(props.winner?.name || '')
+    .toLowerCase()
+    .includes('treetan'),
+)
+
+const partnerLogo = computed(() => {
+  // Logo custom dari produk (upload) diprioritaskan
+  if (props.winner?.logo) return props.winner.logo
+
+  if (isMinala.value) return '/logo-minala.png'
+  if (isAqobah.value) return '/logo-aqobah.png'
+  if (isKanomas.value) return '/logo-kanomas.png'
+  if (isJasindo.value) return '/logo-jasindo.png'
+  if (isTreetan.value) return '/logo-treetan.png'
+  return null
+})
+
+const partnerAlt = computed(() => {
+  if (props.winner?.logo) return props.winner.name || 'Logo'
+  if (isMinala.value) return 'Minala'
+  if (isAqobah.value) return 'Aqobah'
+  if (isKanomas.value) return 'Kanomas'
+  if (isJasindo.value) return 'Jasindo'
+  if (isTreetan.value) return 'Treetan'
+  return ''
+})
+
+const hasCustomLogo = computed(() => Boolean(props.winner?.logo))
+const useTallBadge = computed(
+  () => hasCustomLogo.value || isMinala.value || isKanomas.value,
+)
+const useWideBadge = computed(
+  () =>
+    !hasCustomLogo.value &&
+    (isTreetan.value || isJasindo.value || isAqobah.value),
+)
+
 const confetti = computed(() => {
   const colors = [
     '#a68d5f',
@@ -24,16 +86,18 @@ const confetti = computed(() => {
     '#5a8f8f',
     '#f0d9a0',
     '#2b2b2b',
+    '#C9A227',
+    '#D4764E',
   ]
-  return Array.from({ length: 28 }, (_, i) => ({
+  return Array.from({ length: 48 }, (_, i) => ({
     id: i,
-    left: `${4 + ((i * 37) % 92)}%`,
-    delay: `${(i % 10) * 0.08}s`,
-    duration: `${2.2 + (i % 5) * 0.25}s`,
+    left: `${2 + ((i * 21) % 96)}%`,
+    delay: `${(i % 16) * 0.18}s`,
+    duration: `${4.8 + (i % 7) * 0.35}s`,
     color: colors[i % colors.length],
-    size: `${6 + (i % 4) * 2}px`,
-    rotate: `${(i * 47) % 360}deg`,
-    drift: `${(i % 2 === 0 ? -1 : 1) * (12 + (i % 6) * 8)}px`,
+    size: `${7 + (i % 5) * 2}px`,
+    rotate: `${(i * 53) % 360}deg`,
+    drift: `${(i % 2 === 0 ? -1 : 1) * (18 + (i % 8) * 10)}px`,
   }))
 })
 </script>
@@ -69,10 +133,23 @@ const confetti = computed(() => {
       <div class="burst" aria-hidden="true" />
       <div
         class="badge"
-        :style="{ background: winner.color || 'var(--shiratha-gold)' }"
+        :class="{
+          'badge-logo': !!partnerLogo,
+          'badge-wide': useWideBadge,
+          'badge-tall': useTallBadge,
+        }"
+        :style="partnerLogo ? undefined : { background: winner.color || 'var(--shiratha-gold)' }"
       >
         <span class="badge-ring" />
-        <span class="badge-icon">{{ isZonk ? '○' : '★' }}</span>
+        <span class="badge-ring ring-2" />
+        <span class="badge-ring ring-3" />
+        <img
+          v-if="partnerLogo"
+          class="partner-logo"
+          :src="partnerLogo"
+          :alt="partnerAlt"
+        />
+        <span v-else class="badge-icon">{{ isZonk ? '😢' : '★' }}</span>
       </div>
 
       <p class="eyebrow">{{ isZonk ? 'Hampir saja' : 'Selamat!' }}</p>
@@ -124,7 +201,7 @@ const confetti = computed(() => {
   pointer-events: none;
   animation-name: confetti-fall;
   animation-timing-function: cubic-bezier(0.2, 0.7, 0.3, 1);
-  animation-iteration-count: 1;
+  animation-iteration-count: 2;
   animation-fill-mode: both;
 }
 
@@ -162,7 +239,7 @@ const confetti = computed(() => {
     transparent 62%
   );
   pointer-events: none;
-  animation: burst-pulse 1.6s ease-in-out infinite;
+  animation: burst-pulse 2.2s ease-in-out infinite;
 }
 
 .card.miss .burst {
@@ -188,13 +265,67 @@ const confetti = computed(() => {
   animation: badge-bounce 0.7s cubic-bezier(0.18, 0.9, 0.32, 1.35) 0.12s both;
 }
 
+.badge.badge-logo {
+  width: 112px;
+  height: 112px;
+  background: #fff;
+  border: 1px solid var(--shiratha-line);
+  box-shadow: 0 12px 28px rgba(43, 43, 43, 0.12);
+}
+
+.badge.badge-wide {
+  width: 168px;
+  height: 96px;
+  border-radius: 20px;
+}
+
+.badge.badge-tall {
+  width: 132px;
+  height: 148px;
+  border-radius: 24px;
+}
+
+.badge.badge-tall .partner-logo {
+  width: 88%;
+  height: 88%;
+}
+
+.badge.badge-wide .badge-ring,
+.badge.badge-wide .badge-ring.ring-2,
+.badge.badge-wide .badge-ring.ring-3 {
+  border-radius: 24px;
+}
+
+.badge.badge-tall .badge-ring,
+.badge.badge-tall .badge-ring.ring-2,
+.badge.badge-tall .badge-ring.ring-3 {
+  border-radius: 28px;
+}
+
+.partner-logo {
+  width: 82%;
+  height: 70%;
+  object-fit: contain;
+  display: block;
+}
+
 .badge-ring {
   position: absolute;
   inset: -8px;
   border-radius: 50%;
-  border: 2px solid rgba(166, 141, 95, 0.35);
+  border: 2px solid rgba(166, 141, 95, 0.45);
   pointer-events: none;
-  animation: ring-expand 1.1s ease-out 0.2s both;
+  animation: ring-expand 2.4s ease-out 0.15s infinite;
+}
+
+.badge-ring.ring-2 {
+  animation-delay: 0.85s;
+  border-color: rgba(201, 162, 39, 0.4);
+}
+
+.badge-ring.ring-3 {
+  animation-delay: 1.55s;
+  border-color: rgba(47, 93, 80, 0.35);
 }
 
 .card.miss .badge-ring {
@@ -208,9 +339,15 @@ const confetti = computed(() => {
   animation: star-spin 0.8s ease 0.25s both;
 }
 
+.card.miss .badge {
+  background: #e8e4dc;
+  color: #5c5348;
+  box-shadow: 0 8px 20px rgba(43, 43, 43, 0.1);
+}
+
 .card.miss .badge-icon {
   animation: none;
-  font-size: 1.4rem;
+  font-size: 2.2rem;
 }
 
 .eyebrow {
@@ -243,7 +380,7 @@ const confetti = computed(() => {
   color: transparent;
   animation:
     fade-up 0.45s ease 0.24s both,
-    shine 2.4s linear 0.5s infinite;
+    shine 3.2s linear 0.4s infinite;
 }
 
 .msg {
@@ -400,12 +537,15 @@ const confetti = computed(() => {
     opacity: 0;
     transform: translate3d(0, -10px, 0) rotate(0deg);
   }
-  12% {
+  8% {
+    opacity: 1;
+  }
+  75% {
     opacity: 1;
   }
   100% {
     opacity: 0;
-    transform: translate3d(var(--drift), 105vh, 0) rotate(var(--rot));
+    transform: translate3d(var(--drift), 110vh, 0) rotate(var(--rot));
   }
 }
 </style>

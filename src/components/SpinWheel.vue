@@ -8,14 +8,34 @@ const props = defineProps({
   large: { type: Boolean, default: false },
 })
 
-const size = computed(() => (props.large ? 560 : 340))
+const size = computed(() => (props.large ? 640 : 520))
 const cx = computed(() => size.value / 2)
 const cy = computed(() => size.value / 2)
-const radius = computed(() => size.value / 2 - 8)
-const labelMax = computed(() => (props.large ? 18 : 12))
-const labelFont = computed(() => (props.large ? 15 : 11))
-const hubR = computed(() => (props.large ? 36 : 28))
-const hubDot = computed(() => (props.large ? 12 : 10))
+const radius = computed(() => size.value / 2 - 10)
+const hubR = computed(() => (props.large ? 40 : 34))
+const hubDot = computed(() => (props.large ? 12 : 11))
+
+const labelFont = computed(() => {
+  const n = props.prizes.length || 1
+  const base = props.large ? 15 : 13
+  if (n >= 14) return base - 2
+  if (n >= 10) return base - 1
+  return base
+})
+
+function splitLabel(name) {
+  const text = String(name || '').trim()
+  const words = text.split(/\s+/)
+  if (words.length === 1) {
+    if (text.length <= 14) return [text]
+    const mid = Math.ceil(text.length / 2)
+    return [text.slice(0, mid), text.slice(mid)]
+  }
+  if (words.length === 2) return words
+  // 3+ kata: 2 baris seimbang
+  const mid = Math.ceil(words.length / 2)
+  return [words.slice(0, mid).join(' '), words.slice(mid).join(' ')]
+}
 
 const segments = computed(() => {
   const list = props.prizes
@@ -24,6 +44,7 @@ const segments = computed(() => {
   const angle = (Math.PI * 2) / n
   const c = cx.value
   const r = radius.value
+  const font = labelFont.value
   return list.map((prize, i) => {
     const start = i * angle - Math.PI / 2
     const end = start + angle
@@ -33,20 +54,20 @@ const segments = computed(() => {
     const x2 = c + r * Math.cos(end)
     const y2 = c + r * Math.sin(end)
     const mid = start + angle / 2
-    const labelR = r * 0.64
+    const labelR = r * 0.58
     const lx = c + labelR * Math.cos(mid)
     const ly = c + labelR * Math.sin(mid)
     const deg = (mid * 180) / Math.PI
-    const max = labelMax.value
-    const label =
-      prize.name.length > max ? prize.name.slice(0, max - 1) + '…' : prize.name
+    const lines = splitLabel(prize.name)
+    const lineH = font + 2
     return {
       prize,
       path: `M ${c} ${c} L ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2} Z`,
       lx,
       ly,
       rotate: deg,
-      label,
+      lines,
+      lineH,
     }
   })
 })
@@ -78,7 +99,7 @@ const wheelStyle = computed(() => ({
           :r="radius + 4"
           fill="#ffffff"
           stroke="#a68d5f"
-          stroke-width="6"
+          stroke-width="7"
         />
         <path
           v-for="seg in segments"
@@ -86,7 +107,7 @@ const wheelStyle = computed(() => ({
           :d="seg.path"
           :fill="seg.prize.color"
           stroke="#ffffff"
-          stroke-width="1.5"
+          stroke-width="2"
         />
         <g v-for="seg in segments" :key="`label-${seg.prize.id}`">
           <text
@@ -98,7 +119,14 @@ const wheelStyle = computed(() => ({
             class="seg-label"
             :style="{ fontSize: labelFont + 'px' }"
           >
-            {{ seg.label }}
+            <tspan
+              v-for="(line, li) in seg.lines"
+              :key="li"
+              :x="seg.lx"
+              :dy="li === 0 ? (-(seg.lines.length - 1) * seg.lineH) / 2 : seg.lineH"
+            >
+              {{ line }}
+            </tspan>
           </text>
         </g>
         <circle
@@ -118,28 +146,28 @@ const wheelStyle = computed(() => ({
 <style scoped>
 .wheel-wrap {
   position: relative;
-  width: min(340px, 86vw);
-  height: min(340px, 86vw);
+  width: min(520px, 92vw);
+  height: min(520px, 92vw);
   margin: 0 auto;
 }
 
 .wheel-wrap.large {
-  width: min(560px, 78vmin);
-  height: min(560px, 78vmin);
+  width: min(640px, 88vmin);
+  height: min(640px, 88vmin);
 }
 
 .pointer {
   position: absolute;
-  top: -6px;
+  top: -8px;
   left: 50%;
   z-index: 3;
   width: 0;
   height: 0;
   transform: translateX(-50%);
-  border-left: 14px solid transparent;
-  border-right: 14px solid transparent;
-  border-top: 28px solid #a68d5f;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+  border-left: 16px solid transparent;
+  border-right: 16px solid transparent;
+  border-top: 32px solid #a68d5f;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
 }
 
 .large .pointer {
@@ -167,10 +195,10 @@ const wheelStyle = computed(() => ({
   fill: #ffffff;
   font-family: 'Figtree', sans-serif;
   font-weight: 700;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.01em;
   paint-order: stroke;
-  stroke: rgba(43, 43, 43, 0.35);
-  stroke-width: 2.5px;
+  stroke: rgba(43, 43, 43, 0.4);
+  stroke-width: 3px;
   pointer-events: none;
 }
 </style>
