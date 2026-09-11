@@ -1,0 +1,13 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Publik: siapa saja bisa baca & tulis (cocok booth/internal).
+    // Jangan pakai rules ini untuk undian publik besar tanpa Auth.
+    match /prizes/{prizeId} {
+      allow read, write: if true;
+    }
+    match /spins/{spinId} {
+      allow read, write: if true;
+    }
+  }
+}
