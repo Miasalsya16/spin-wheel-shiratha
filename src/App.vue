@@ -8,6 +8,7 @@ import { usePrizes } from './composables/usePrizes'
 import { useSpin } from './composables/useSpin'
 import { useAuth } from './composables/useAuth'
 import { useSpinStats } from './composables/useSpinStats'
+import { useSounds, ZONK_SOUND_OPTIONS } from './composables/useSounds'
 
 const { isAuthenticated, loginError, login, logout } = useAuth()
 
@@ -30,9 +31,24 @@ const { totalSpins, prizesUsed, prizesRemaining, recordSpin } =
 const { spinning, lastWinner, spinError, spin, finishSpin, clearWinner } =
   useSpin({ prizes, updatePrize, recordSpin })
 
+const {
+  unlock,
+  playSpin,
+  stopSpin,
+  playResult,
+  getZonkStyle,
+  setZonkStyle,
+  previewZonk,
+} = useSounds()
+
 const rotation = ref(0)
 const animating = ref(false)
 const presentation = ref(false)
+const cooldownLeft = ref(0)
+const zonkSound = ref(getZonkStyle())
+
+const COOLDOWN_SEC = 3
+let cooldownTimer = null
 
 const canSpin = computed(
   () =>
@@ -40,10 +56,39 @@ const canSpin = computed(
     !animating.value &&
     !spinning.value &&
     !lastWinner.value &&
+    cooldownLeft.value === 0 &&
     winnablePrizes.value.length > 0,
 )
 
+const spinLabel = computed(() => {
+  if (animating.value || spinning.value) return 'Berputar…'
+  if (lastWinner.value) return 'Tutup hasil dulu'
+  if (cooldownLeft.value > 0) return `Siap dalam ${cooldownLeft.value}…`
+  return 'Spin'
+})
+
+function clearCooldown() {
+  if (cooldownTimer) {
+    clearInterval(cooldownTimer)
+    cooldownTimer = null
+  }
+  cooldownLeft.value = 0
+}
+
+function startCooldown(seconds = COOLDOWN_SEC) {
+  clearCooldown()
+  cooldownLeft.value = seconds
+  cooldownTimer = setInterval(() => {
+    if (cooldownLeft.value <= 1) {
+      clearCooldown()
+      return
+    }
+    cooldownLeft.value -= 1
+  }, 1000)
+}
+
 function onLogin({ username, password }) {
+  unlock()
   login(username, password)
 }
 
@@ -69,9 +114,14 @@ async function onSpin() {
 
   animating.value = true
   try {
+    await playSpin(5000)
     rotation.value = targetRotationFor(target)
     await new Promise((r) => setTimeout(r, 5000))
-    await finishSpin(target)
+    stopSpin()
+    const won = await finishSpin(target)
+    if (won) await playResult(won.name)
+  } catch {
+    stopSpin()
   } finally {
     animating.value = false
   }
@@ -79,6 +129,15 @@ async function onSpin() {
 
 function onCloseResult() {
   clearWinner()
+  startCooldown(COOLDOWN_SEC)
+}
+
+function onZonkSoundChange(e) {
+  const id = e.target.value
+  setZonkStyle(id)
+  zonkSound.value = id
+  unlock()
+  previewZonk(id)
 }
 
 async function enterPresentation() {
@@ -126,6 +185,7 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('fullscreenchange', onFullscreenChange)
   window.removeEventListener('keydown', onKeydown)
+  clearCooldown()
 })
 </script>
 
@@ -143,11 +203,23 @@ onUnmounted(() => {
       <img class="brand-logo" src="/logo-shiratha.png" alt="Shiratha" width="436" height="126" />
       <h1>Spin Wheel</h1>
       <p class="tagline">Hadiah berstok terbatas — stok berkurang otomatis saat menang.</p>
-      <div class="hero-meta">
-        <p v-if="isLocalMode" class="mode-badge">Mode lokal — stok & edit tersimpan di browser</p>
-        <p v-else class="mode-badge live">Terhubung Firebase</p>
-        <button type="button" class="logout-btn" @click="onLogout">Keluar</button>
-      </div>
+        <div class="hero-meta">
+          <p v-if="isLocalMode" class="mode-badge">Mode lokal — stok & edit tersimpan di browser</p>
+          <p v-else class="mode-badge live">Terhubung Firebase</p>
+          <label class="sound-pick">
+            Suara ZONK
+            <select :value="zonkSound" @change="onZonkSoundChange">
+              <option
+                v-for="opt in ZONK_SOUND_OPTIONS"
+                :key="opt.id"
+                :value="opt.id"
+              >
+                {{ opt.label }}
+              </option>
+            </select>
+          </label>
+          <button type="button" class="logout-btn" @click="onLogout">Keluar</button>
+        </div>
     </header>
 
     <header v-else class="hero hero-present">
@@ -168,10 +240,11 @@ onUnmounted(() => {
           <button
             type="button"
             class="spin-btn"
+            :class="{ cooldown: cooldownLeft > 0 }"
             :disabled="!canSpin"
             @click="onSpin"
           >
-            {{ animating || spinning ? 'Berputar…' : 'Spin' }}
+            {{ spinLabel }}
           </button>
 
           <button
@@ -191,6 +264,11 @@ onUnmounted(() => {
             Keluar Full Layar
           </button>
         </div>
+
+        <p v-if="cooldownLeft > 0" class="cooldown-hint" aria-live="polite">
+          Hitung mundur spin berikutnya:
+          <strong>{{ cooldownLeft }}</strong>
+        </p>
 
         <p v-if="!winnablePrizes.length && !loading" class="hint">
           Semua hadiah sudah di stok cadangan (sisa 1) — masih tampil di roda, tapi tidak bisa terpilih. Tambah stok untuk lanjut spin.
@@ -324,6 +402,48 @@ onUnmounted(() => {
 .logout-btn:hover {
   border-color: var(--shiratha-gold);
   color: var(--shiratha-gold);
+}
+
+.sound-pick {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--shiratha-muted);
+}
+
+.sound-pick select {
+  border: 1px solid var(--shiratha-line);
+  border-radius: 999px;
+  padding: 0.35rem 0.7rem;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--shiratha-ink);
+  background: #fff;
+  cursor: pointer;
+}
+
+.cooldown-hint {
+  margin: 0.85rem 0 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--shiratha-gold);
+  letter-spacing: 0.02em;
+}
+
+.cooldown-hint strong {
+  display: inline-block;
+  min-width: 1.25rem;
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  color: var(--shiratha-ink);
+}
+
+.spin-btn.cooldown {
+  opacity: 0.7;
 }
 
 .layout {
